@@ -1,88 +1,90 @@
 package com.example.UserManagement.Service;
 
-import com.example.UserManagement.DTO.RequestBody;
-import com.example.UserManagement.Excepction.EmailAlreadyExistsExcepction;
-import com.example.UserManagement.Excepction.UserCreationFailExcepction;
+import com.example.UserManagement.DTO.RequestBodyDTO;
+import com.example.UserManagement.Excepction.EmailAlreadyExistsException;
+import com.example.UserManagement.Excepction.UserCreationFailedException;
 import com.example.UserManagement.Excepction.UserNotFoundException;
 import com.example.UserManagement.Model.User;
 import com.example.UserManagement.Repository.UserRepo;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
+@Service
+@Slf4j
+@RequiredArgsConstructor
 public class UserService {
 
-    @Autowired
-    private UserRepo repo;
+    private final UserRepo userRepo;
 
-    private final Logger log = LoggerFactory.getLogger(UserService.class);
-
-    public List<User>getAllUsers(){
-        log.info("Fetching all users from database..");
-        return repo.findAll();
+    public List<User> getAllUsers() {
+        log.info("Fetching all users from the database.");
+        return userRepo.findAll();
     }
 
- public void createUser(RequestBody requestBody) throws EmailAlreadyExistsExcepction, UserCreationFailExcepction {
-     log.info("Processing to create user with email: " + requestBody.getEmail());
-     User user = repo.findByEmail(requestBody.getEmail());
-     if (user == null) {
-         try {
-             log.info("Creating User Object to store to database from RequestBody");
-             User newUser = new User();
-             newUser.setName(requestBody.getName());
-             newUser.setEmail(requestBody.getEmail());
-             newUser.setAge(requestBody.getAge());
-             log.info("User created successfully with email: " + requestBody.getEmail());
-             repo.save(newUser);
-         } catch (Exception ex) {
-             log.error("User Creation Failed...");
-             throw new UserCreationFailExcepction("Something went wrong. Check again: name, age, and email cannot be empty", ex);
-         }
-     } else {
-         throw new EmailAlreadyExistsExcepction("Email already exists with email: " + requestBody.getEmail());
-     }
- }
-public User findById(Long userId) throws UserNotFoundException {
-    log.info("Fetching user with id: " + userId);
-    Optional<User> user = repo.findById(userId);
-    if (user.isPresent()) {
-        return user.get();
-    } else {
-        throw new UserNotFoundException("User not found with id: " + userId);
-    }
-}
+    @Transactional
+    public void createUser(RequestBodyDTO requestBodyDTO) {
+        log.info("Attempting to create a user with email: {}", requestBodyDTO.getEmail());
 
-    public User findByEmail(String email) throws UserNotFoundException {
-        log.info("Fetching user with id: " + email;
-        User user = repo.findByEmail(email);
-        if (user != null) {
-            return user;
-        } else {
-            throw new UserNotFoundException("User not found with id: " + email);
+        if (userRepo.findByEmail(requestBodyDTO.getEmail()).isPresent()) {
+            throw new EmailAlreadyExistsException("Email already exists: " + requestBodyDTO.getEmail());
+        }
+
+        try {
+            User newUser = new User();
+            newUser.setName(requestBodyDTO.getName());
+            newUser.setEmail(requestBodyDTO.getEmail());
+            newUser.setAge(requestBodyDTO.getAge());
+            userRepo.save(newUser);
+            log.info("User created successfully with email: {}", requestBodyDTO.getEmail());
+        } catch (Exception ex) {
+            log.error("User creation failed for email: {}", requestBodyDTO.getEmail(), ex);
+            throw new UserCreationFailedException("User creation failed, please try again.", ex);
         }
     }
 
-    public String updateUserByEmail(String email , RequestBody requestBody)
-            throws UserNotFoundException, UserCreationFailExcepction {
-        log.info("findign User with Email:"  + email);
-        User user = repo.findByEmail(email);
-      if(user != null){
-         try{
-             User newUser = new User();
-             newUser.setEmail(requestBody.getEmail());
-             newUser.setName(requestBody.getName());
-             newUser.setAge(requestBody.getAge());
-             repo.save(newUser);
-             return  "User updated Successfully with emai :" + requestBody.getEmail();
-         }catch (Exception e){
-             throw new UserCreationFailExcepction("Something went wrong while updatig user check again" , e);
-         }
-      } else {
-          throw new UserNotFoundException("User not found with id: " + email);
-      }
+    public User findById(Long userId) {
+        log.info("Fetching user by ID: {}", userId);
+        return userRepo.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+    }
 
+    public User findByEmail(String email) {
+        log.info("Fetching user by email: {}", email);
+        return userRepo.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+    }
+
+    @Transactional
+    public String updateUserById(Long userId, RequestBodyDTO requestBodyDTO) {
+        User user = findById(userId);
+        user.setName(requestBodyDTO.getName());
+        user.setEmail(requestBodyDTO.getEmail());
+        user.setAge(requestBodyDTO.getAge());
+        userRepo.save(user);
+        log.info("User updated successfully with ID: {}", userId);
+        return "User updated successfully with ID: " + userId;
+    }
+
+    @Transactional
+    public String updateByEmail(String email, RequestBodyDTO requestBodyDTO) {
+        User user = findByEmail(email);
+        user.setName(requestBodyDTO.getName());
+        user.setEmail(requestBodyDTO.getEmail());
+        user.setAge(requestBodyDTO.getAge());
+        userRepo.save(user);
+        log.info("User updated successfully with email: {}", email);
+        return "User updated successfully with email: " + email;
+    }
+
+    @Transactional
+    public String deleteById(Long userId) {
+        User user = findById(userId);
+        userRepo.deleteById(userId);
+        log.info("User deleted successfully with ID: {}", userId);
+        return "User deleted successfully.";
     }
 }
