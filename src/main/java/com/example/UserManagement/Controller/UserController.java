@@ -6,10 +6,14 @@ import com.example.UserManagement.Service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/user-api")
@@ -27,7 +31,8 @@ public class UserController {
     @PostMapping("/")
     public ResponseEntity<String> createUser(@Valid @RequestBody RequestBodyDTO requestBodyDTO) {
         userService.createUser(requestBodyDTO);
-        return ResponseEntity.ok("User created successfully with email: " + requestBodyDTO.getEmail());
+        return ResponseEntity.status(HttpStatus.CREATED).body("User created successfully with email: "
+                + requestBodyDTO.getEmail());
     }
 
     @GetMapping("/id/{userId}")
@@ -45,6 +50,11 @@ public class UserController {
         return ResponseEntity.ok(userService.deleteById(userId));
     }
 
+    @DeleteMapping("/email/{email}")
+    public ResponseEntity<?>deleteByEmail(@PathVariable String email){
+        return ResponseEntity.ok(userService.deleteByEmail(email));
+    }
+
     @PutMapping("/update-user/id/{userId}")
     public ResponseEntity<String> updateUserById(
             @PathVariable Long userId,
@@ -58,4 +68,17 @@ public class UserController {
             @Valid @RequestBody RequestBodyDTO requestBodyDTO) {
         return ResponseEntity.ok(userService.updateByEmail(email, requestBodyDTO));
     }
+
+    @GetMapping("/page/")
+    public ResponseEntity<Page<User>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        if (page < 0 || size <= 0) {
+            throw new IllegalArgumentException("Page and size must be positive values.");
+        }
+        Page<User> users = userService.getAllUsers(page, size);
+        return ResponseEntity.ok(users);
+    }
+
 }
+

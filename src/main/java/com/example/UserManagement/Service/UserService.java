@@ -8,6 +8,8 @@ import com.example.UserManagement.Model.User;
 import com.example.UserManagement.Repository.UserRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,8 +31,8 @@ public class UserService {
     public void createUser(RequestBodyDTO requestBodyDTO) {
         log.info("Attempting to create a user with email: {}", requestBodyDTO.getEmail());
 
-        if (userRepo.findByEmail(requestBodyDTO.getEmail()).isPresent()) {
-            throw new EmailAlreadyExistsException("Email already exists: " + requestBodyDTO.getEmail());
+        if (userRepo.findByEmail(requestBodyDTO.getEmail()).isPresent()) { // if email is already exists throw excepction.
+            throw new EmailAlreadyExistsException("Email already registred with : " + requestBodyDTO.getName());
         }
 
         try {
@@ -87,4 +89,21 @@ public class UserService {
         log.info("User deleted successfully with ID: {}", userId);
         return "User deleted successfully.";
     }
+
+    @Transactional
+    public String deleteByEmail(String  email){
+        User user = findByEmail(email);
+        userRepo.delete(user);
+        log.info("User deleted successfully with Email: {}", email);
+        return "User deleted successfully.";
+    }
+
+
+  public Page<User> getAllUsers(int page, int size) {
+      log.info("Fetching users from page: {} with size: {}", page, size);
+      PageRequest pageRequest = PageRequest.of(page, size);
+      Page<User> users = userRepo.findAll(pageRequest);
+      log.info("Fetched {} users from page: {}", users.getNumberOfElements(), page);
+      return users;
+  }
 }
